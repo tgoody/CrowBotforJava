@@ -137,8 +137,8 @@ public class CrowBot {
             }
 
         }
-        catch(Exception fuckyou){
-            System.out.println("Didn't work. Fuck you I hate java.");
+        catch(Exception whoops){
+            System.out.println("Didn't work. java sucks.");
             return matchedItems;
         }
 
@@ -222,8 +222,8 @@ public class CrowBot {
 
 
 
-        catch(Exception fuckyou){
-            System.out.println("Fuck you java");
+        catch(Exception whoops){
+            System.out.println("whoops");
         }
 
         return matchedItems.get(0);
