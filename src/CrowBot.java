@@ -22,9 +22,13 @@ public class CrowBot {
         String categoryType = "";
         System.out.println("Enter keywords separated by commas");
         String keywords = input.nextLine();
+        keywords = keywords.trim();
         ArrayList<String> commaWords = new ArrayList<String>(Arrays.asList(keywords.split(",")));
         System.out.println("Enter color separated by spaces");
         String color = input.nextLine();
+        if(color.isEmpty()){
+            color = "0";
+        }
         ArrayList<String> spaceColor = new ArrayList<String>(Arrays.asList(color.split(" ")));
 
 
@@ -38,7 +42,7 @@ public class CrowBot {
             categoryType = categoryType.toLowerCase();
         }
 
-        System.out.println("What size if applicable? Please put 0 if there is no size.");
+        System.out.println("What size if applicable? Please put 0 if there is no size. Put \"CHOOSE_FOR_ME\" if you want any size.");
         String sizechoice = input.nextLine();
         if(sizechoice.equals("0")){
             sizechoice = "N/A";
@@ -52,12 +56,32 @@ public class CrowBot {
 
         ArrayList<Item> matches = findMatches(url, commaWords, categoryType);
 
+        int maxIndex = 0;
+
+        for(int i = 0; i < matches.size(); i++){
+            for(String word : commaWords){
+                if (matches.get(i).name.toLowerCase().contains(word.toLowerCase())){
+                    matches.get(i).count++;
+                }
+
+            }
+            if(matches.get(i).count > matches.get(maxIndex).count){
+                maxIndex = i;
+            }
+
+        }
+
+        Item bestMatch = matches.get(maxIndex);
+
+
+
         for(int i = 0; i < matches.size(); i++){
             System.out.println(matches.get(i).name);
+            System.out.println("Best match: " + bestMatch.name);
         }
         System.out.println("\n\n\n");
 
-        Item specialItem = fillData(matches, spaceColor, sizechoice);
+        Item specialItem = fillData(bestMatch, spaceColor, sizechoice);
 
         System.out.println("Name: " + specialItem.name);
         System.out.println("Product ID: " + specialItem.productID);
@@ -146,15 +170,12 @@ public class CrowBot {
         return matchedItems;
     }
 
-    public static Item fillData(ArrayList<Item> matchedItems, ArrayList<String> colors, String sizechoice) {
+    public static Item fillData(Item bestMatchItem, ArrayList<String> colors, String sizechoice) {
 
         InputStream inputStream2;
 
         try {
-
-            for (int i = 0; i < matchedItems.size(); i++) {
-
-                URL url2 = new URL("https://www.supremenewyork.com/shop/" + matchedItems.get(i).productID + ".json");
+                URL url2 = new URL("https://www.supremenewyork.com/shop/" + bestMatchItem.productID + ".json");
                 URLConnection urlConnection2 = url2.openConnection();
                 inputStream2 = urlConnection2.getInputStream();
                 StringBuffer allLines = new StringBuffer();
@@ -170,48 +191,65 @@ public class CrowBot {
                 br2.close();
 
                 JSONArray styleMap = new JSONObject(allLines.toString()).getJSONArray("styles");
+
                 for(int j = 0; j < styleMap.length(); j++){
-                    JSONObject colorProduct = styleMap.getJSONObject(i);
+
+                    JSONObject colorProduct = styleMap.getJSONObject(j);
                     String title = colorProduct.getString("name");
+
+                    if(colors.get(0).equals("0")){
+                        colors.set(0, title);
+                    }
+
                     for(int k = 0; k < colors.size(); k++){
                         if(title.toLowerCase().equals(colors.get(k).toLowerCase())){
-                            matchedItems.get(i).setSpecialID(colorProduct.getInt("id"));
-                            matchedItems.get(i).setColor(colorProduct.getString("name"));
+                            bestMatchItem.setSpecialID(colorProduct.getInt("id"));
+                            bestMatchItem.setColor(colorProduct.getString("name"));
 
 
                             JSONArray sizeMap = colorProduct.getJSONArray("sizes");
+
                             for(int l = 0; l < sizeMap.length(); l++) {
                                 JSONObject certainSize = sizeMap.getJSONObject(l);
                                 String sizeName = certainSize.getString("name");
-                                if(!sizeName.equals(sizechoice)){
+
+                                if(sizechoice.equals("CHOOSE_FOR_ME")){
+                                    if(certainSize.getInt("stock_level") == 1){
+                                        bestMatchItem.size = sizeName;
+                                        bestMatchItem.colorID = certainSize.getInt("id");
+                                        bestMatchItem.stocklevel = certainSize.getInt("stock_level");
+                                        return bestMatchItem;
+                                    }
+                                    else{continue;}
+                                }
+
+                                else if(!sizeName.toUpperCase().equals(sizechoice)){
                                     if(l == sizeMap.length()-1){
                                         int colorID = certainSize.getInt("id");
                                         int stockLevel = certainSize.getInt("stock_level");
 
-                                        matchedItems.get(i).setSize(sizeName);
-                                        matchedItems.get(i).setColorID(colorID);
-                                        matchedItems.get(i).setStocklevel(stockLevel);
-                                        return matchedItems.get(i);
+                                        bestMatchItem.setSize(sizeName);
+                                        bestMatchItem.setColorID(colorID);
+                                        bestMatchItem.setStocklevel(stockLevel);
+                                        return bestMatchItem;
                                     }
                                     continue;
                                 }
+
+
+
                                 int colorID = certainSize.getInt("id");
                                 int stockLevel = certainSize.getInt("stock_level");
 
-                                matchedItems.get(i).setSize(sizeName);
-                                matchedItems.get(i).setColorID(colorID);
-                                matchedItems.get(i).setStocklevel(stockLevel);
-                                return matchedItems.get(i);
+                                bestMatchItem.setSize(sizeName);
+                                bestMatchItem.setColorID(colorID);
+                                bestMatchItem.setStocklevel(stockLevel);
+                                return bestMatchItem;
                             }
                         }
                     }
 
                 }
-
-
-
-            }
-
 
         }
 
@@ -226,7 +264,7 @@ public class CrowBot {
             System.out.println("whoops");
         }
 
-        return matchedItems.get(0);
+        return bestMatchItem;
     }
 
 

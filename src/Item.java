@@ -8,6 +8,7 @@ public class Item {
     int stocklevel;
     String size;
     int colorID;
+    int count; //for finding similar strings
 
 
     public void setName(String name){
